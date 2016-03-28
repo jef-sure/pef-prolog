@@ -1,0 +1,101 @@
+=head1 NAME
+
+PEF::Prolog - copy'n'paste manager for typical request handlers
+
+=head1 SYNOPSIS
+
+    use PEF::Prolog qw(MyProlog::Module);
+
+    sub get_client_info : Prolog(get_client) {
+      my $ret = $client->data;
+      $ret->{result} = "OK";
+      $ret;
+    }
+
+    # MyProlog/Module.pm:
+    package MyProlog::Module;
+    
+    our %PROLOG = (
+      get_client => {
+        vars => [qw($client)],
+        code => <<EOC
+          local \$client = one_row([client => -join => "client_auth"], 
+              -where => {auth => \$_[0]->{auth}});
+    EOC
+      },
+    );
+
+=head1 DESCRIPTION
+
+PEF::Prolog allows to manage typical request handler prolog pieces. 
+You have to describe these pieces in your module and then only point them
+out. These code pieces can be generated on the flight in your module or 
+from code references. Unfortunately, Perl doesn't have real macroses, 
+there's no simple way to inject variables in your subroutine. Macroses made
+with L<Filter::Simple> are fragile. You can use global module variables with
+C<local> to propagate variables from your prolog code into subroutine.
+
+=head2 Injected module
+
+Your module must contain %PROLOG variable with following stucture:
+
+  our %PROLOG = (
+    piece_name => {
+      vars => [ ... global variables list ... ],
+      code => scalar with text or code reference,
+      external => scalar with text or code reference
+    },
+
+=over   
+
+=item vars
+
+ List of global variables that will be added to your module.
+ 
+=item code
+
+ Text scalar with program code that will be added to prolog code or
+ code references to subroutine that will generate such a text scalar.
+ This code references are called with three parameters: 
+ C<($param_ref, $piece_name, $attributes_hash)>. You can pass one 
+ reference as parameter to your code like this:
+ 
+   sub get_client_info : Prolog(get_client => {optional => 1})
+   
+ C<$attributes_hash_ref> - anonymous hash with all prolog names and 
+ parameters.
+ 
+=item external
+
+ This is exactly like C<code> but its code is used outside of the function.
+ You can use it for some C<use Module> for example.
+ 
+=back
+
+Optionally your module can contain scalar C<$GLOBAL_USE> that will be 
+added outside of every generated function. 
+
+=head1 Known issues
+
+You have to use global variables in your prolog code to use them in your 
+subroutine.
+
+=head1 See also
+
+=over
+
+=item * L<Filter::Simple>
+
+=back
+
+=head1 Authors
+
+This module was written and is maintained by:
+
+=over
+
+=item * PEF Developer <pef-secure@yandex.ru>
+
+=back
+
+=cut
